@@ -1,0 +1,5 @@
+dataset
+*.pkl
+model.h5
+categories.txt
+lbpcascade_animeface.xml
