@@ -12,16 +12,12 @@ fw = fh = 128
 
 model_final = load_model("model.h5")
 
-(scaler, pca, classifier) = joblib.load('classifier.pkl')
-#classifier = joblib.load('classifier.pkl')
+classifier = joblib.load('classifier.pkl')
 
 def features(img):
     img = cv2.resize(img, (197, 197))
     img = np.reshape(img, (1, 197, 197, 3))
     f = np.reshape(model_final.predict(img)[0], (1, -1))
-    f = scaler.transform(f)
-    f = pca.transform(f)
-    #print(f)
     return f
 
 cascade = cv2.CascadeClassifier('lbpcascade_animeface.xml')
@@ -37,7 +33,7 @@ faces = cascade.detectMultiScale(gray,
             minNeighbors = 5,
             minSize = (24, 24))
 
-scale = 1.2
+scale = 1.05
 for (x, y, w, h) in faces:
     x -= w*(scale-1)/2
     w *= scale

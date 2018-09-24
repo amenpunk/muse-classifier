@@ -24,31 +24,38 @@ from sklearn.gaussian_process.kernels import RBF
 from sklearn.preprocessing import StandardScaler, Normalizer
 from sklearn.grid_search import GridSearchCV
 from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import fbeta_score, make_scorer
+from sklearn.metrics import confusion_matrix
+
+def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):
+    """pretty print for confusion matrixes"""
+    # https://gist.github.com/zachguo/10296432
+    columnwidth = max([len(x) for x in labels] + [5])  # 5 is value length
+    empty_cell = " " * columnwidth
+    # Print header
+    print("    " + empty_cell, end=" ")
+    for label in labels:
+        print("%{0}s".format(columnwidth) % label, end=" ")
+    print()
+    # Print rows
+    for i, label1 in enumerate(labels):
+        print("    %{0}s".format(columnwidth) % label1, end=" ")
+        for j in range(len(labels)):
+            cell = "%{0}.1f".format(columnwidth) % cm[i, j]
+            if hide_zeroes:
+                cell = cell if float(cm[i, j]) != 0 else empty_cell
+            if hide_diagonal:
+                cell = cell if i != j else empty_cell
+            if hide_threshold:
+                cell = cell if cm[i, j] > hide_threshold else empty_cell
+            print(cell, end=" ")
+        print()
+
 
 categories = ['eri', 'hanayo', 'honoka', 'kotori', 'maki', 'nico', 'nozomi', 'rin', 'umi']
 with open("categories.txt", "w") as f:
     f.write(json.dumps(categories))
-
-# mobilenet+linearsvm without pca,scaling
-# globalaveragePooling2D
-# -13 *: 96.1%/71.0%
-# -14:   98.2%/68.6%*
-# -15:   96.9%/74.3%*
-# -16 *: 89.6%/73.9%
-# -17:   96.8%/70.0%*
-# -20 *: 98.4%/74.3%*
-# -26 *: 98.4%/70.0%*
-# C=1e5: 97.4%/75.7%*
-# C=1e6: 97.1%/75.7%*
-# C=5e6: 97.9%/78.6%*
-# C=6e6: 97.6%/77.1%*
-
-# pca @ 512
-# resnet50: 98.9%/87.0%
-# resnet50 (@452): 98.9%/88.4%
-# xception:  99.1%/56.2%
-# inceptionV3: 99.1%/51.8%
-
 
 try:
     X, y = joblib.load('features.pkl')
@@ -77,35 +84,32 @@ except:
             X.append(np.squeeze(features(img)))
             y.append(i)
 
-X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=0.1, random_state=0)
+X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=0.05, random_state=0)
 
-# Apply standard scaler to output from resnet50
 scaler = sklearn.preprocessing.StandardScaler()
-scaler.fit(X_train)
-X_train = scaler.transform(X_train)
-X_test = scaler.transform(X_test)
+pca = PCA(whiten=True, random_state=0)
+pipeline=Pipeline(steps=[('scaler', scaler), ('pca', pca), ('svc', SVC(probability=True))])
 
-# Take PCA to reduce feature space dimensionality
-pca = PCA(n_components=452, svd_solver='full', whiten=True, random_state=0)
-pca = pca.fit(X_train)
-print('Explained variance percentage = %0.2f' % sum(pca.explained_variance_ratio_))
-X_train = pca.transform(X_train)
-X_test = pca.transform(X_test)
-print("fitting...")
-
-C=[1, 10, 100, 1000]
+#{'pca__n_components': 384, 'svc__C': 100, 'svc__gamma': 0.0001, 'svc__kernel': 'rbf'}
+#{'pca__n_components': 384, 'svc__C': 1, 'svc__kernel': 'linear'}
+C=[1, 5, 10, 100]
+#n_components = [128, 256, 384, 480, 512]
+n_components = [320, 384, 416, 448, 480]
 params = [
     {
-        'C': C,
-        'kernel': ['linear']
+        'pca__n_components': n_components,
+        'svc__C': C,
+        'svc__kernel': ['linear']
     },
     {
-        'C': C,
-        'gamma': [0.001, 0.0001],
-        'kernel': ['rbf']
+        'pca__n_components': n_components,
+        'svc__C': C,
+        'svc__gamma': [0.001, 0.0001],
+        'svc__kernel': ['rbf']
     },
 ]
-clf = GridSearchCV(estimator=SVC(probability=True), param_grid=params, n_jobs=-1)
+clf = GridSearchCV(pipeline, params,
+                   n_jobs=-1, verbose=3)
 clf.fit(X_train, y_train)
 
 # View the best parameters for the model found using grid search
@@ -116,7 +120,7 @@ classifier = clf.best_estimator_
 y_pred = classifier.predict(X_test)
 print("Score: {0:0.1f}%".format(classifier.score(X_train, y_train)*100))
 print("Accuracy: {0:0.1f}%".format(accuracy_score(y_test,y_pred)*100))
+print_cm(confusion_matrix(y_test, y_pred), labels=categories)
 
 joblib.dump((X, y), 'features.pkl')
-joblib.dump((scaler, pca, classifier), 'classifier.pkl')
-#joblib.dump(classifier, 'classifier.pkl')
+joblib.dump(classifier, 'classifier.pkl')

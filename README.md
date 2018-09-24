@@ -8,24 +8,14 @@ Unlike methods from [here](https://github.com/freedomofkeima/transfer-learning-a
 
 ## Dataset
 
-For each of the 9 characters in *muse*, I collected give-or-take 77 images with their respective tags from yande.re and konachan.com. Faces were extracted from the images using lbp-cascade and hand-filtered so as to remove noise, other characters and non-conforming art styles (ie. chibi versions). They were then all scaled to 128x128px.
+For each of the 9 characters in *muse*, I collected give-or-take 77 images with their respective tags from yande.re and konachan.com. Faces were extracted from the images using [lbp-cascade](https://github.com/nagadomi/lbpcascade_animeface) and hand-filtered so as to remove noise, other characters and non-conforming art styles (ie. chibi versions). They were then all scaled to 128x128px.
 
-The dataset is comprised of 684 files, 10% of them is used for validation.
+The dataset is comprised of 688 files, 5% of them is used for validation.
 
 ## Pipeline
 
 For the model, deep, high-level features is extracted from each image of every character. Then, the features are normalized using a stddev scaler. Using PCA, the feature space of X dimensions is reduced to Y components. The post-reduced features are finally classified using a support vector machine (SVM).
 
-Here's a comparison of models used to extract deep features.
+ResNet50 (X=2048) and Y=320 is used for the model. The SVM used has parameters of `{'svc__C': 1, 'svc__kernel': 'linear'}`
 
-|  Model                      | X  | Y |  Training accuracy |  Validation accuracy |
-|-----------------------------|----|---|--------------------|----------------------|
-| MobileNet (13th conv layer) |1024| - | 96.1%              | 71.0%                |
-| MobileNet (12th conv layer) |512 | - | 89.6%              | 73.9%                |
-| ResNet50                    |2048|452| 98.9%              | 88.4%                |
-| Xception                    |2048|512| 98.7%              | 43.5%                |
-| InceptionV3                 |2048|512| 99.1%              | 51.8%                |
-
-ResNet50 and Y=452 is used for the model. Y was finely tuned from a baseline of 512.
-
-The SVM used is `SVM(C=10, gamma=0.0001, kernel="rbf")`
+With the current dataset it can classify 98.5% of the training set correctly and 91.4% of the validation set correctly.
