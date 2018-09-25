@@ -4,3 +4,4 @@ model.h5
 categories.txt
 lbpcascade_animeface.xml
 .directory
+dataset.tar.gz

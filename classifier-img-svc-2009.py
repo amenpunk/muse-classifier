@@ -21,6 +21,8 @@ img = cv2.imread(sys.argv[1])
 faces = json.loads(check_output(['ruby', 'detect.rb', sys.argv[1]]))
 scale = 1.4
 for face in faces:
+    print(face['likelihood'])
+
     x, y, w, h = face['face']['x'], face['face']['y'], face['face']['width'], face['face']['height']
     x -= w*(scale-1)/2
     w *= scale

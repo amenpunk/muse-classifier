@@ -89,8 +89,8 @@ pipeline=Pipeline(steps=[('scaler', scaler), ('pca', pca), ('svc', SVC(probabili
 #{'pca__n_components': 384, 'svc__C': 100, 'svc__gamma': 0.0001, 'svc__kernel': 'rbf'}
 #{'pca__n_components': 384, 'svc__C': 1, 'svc__kernel': 'linear'}
 C=[1, 10, 100]
-#n_components = [128, 256, 384, 480, 512]
-n_components = [320, 384, 416, 448, 480]
+n_components = [128, 256, 384, 480, 512]
+#n_components = [320, 384, 416, 448, 480]
 params = [
     {
         'pca__n_components': n_components,
