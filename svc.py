@@ -10,23 +10,14 @@ import json
 
 import sklearn
 from sklearn import cross_validation
-from sklearn import grid_search
 from sklearn.metrics import accuracy_score, confusion_matrix
-from sklearn.svm import SVC, LinearSVC
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
 from sklearn.externals import joblib
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.neural_network import MLPClassifier
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
 from sklearn.preprocessing import StandardScaler, Normalizer
 from sklearn.grid_search import GridSearchCV
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import fbeta_score, make_scorer
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import make_scorer, confusion_matrix
 
 def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):
     """pretty print for confusion matrixes"""
@@ -84,7 +75,12 @@ except:
             X.append(np.squeeze(features(img)))
             y.append(i)
 
-X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=0.05, random_state=0)
+n_img = 0
+for cat in categories:
+    n_img += len(listdir('dataset/'+cat))
+
+test_size = 0.05
+X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=test_size, random_state=0)
 
 scaler = sklearn.preprocessing.StandardScaler()
 pca = PCA(whiten=True, random_state=0)
@@ -92,7 +88,7 @@ pipeline=Pipeline(steps=[('scaler', scaler), ('pca', pca), ('svc', SVC(probabili
 
 #{'pca__n_components': 384, 'svc__C': 100, 'svc__gamma': 0.0001, 'svc__kernel': 'rbf'}
 #{'pca__n_components': 384, 'svc__C': 1, 'svc__kernel': 'linear'}
-C=[1, 5, 10, 100]
+C=[1, 10, 100]
 #n_components = [128, 256, 384, 480, 512]
 n_components = [320, 384, 416, 448, 480]
 params = [
@@ -109,7 +105,7 @@ params = [
     },
 ]
 clf = GridSearchCV(pipeline, params,
-                   n_jobs=-1, verbose=3)
+                   n_jobs=11, verbose=3)
 clf.fit(X_train, y_train)
 
 # View the best parameters for the model found using grid search
@@ -118,8 +114,10 @@ print('Params:',clf.best_params_)
 classifier = clf.best_estimator_
 
 y_pred = classifier.predict(X_test)
-print("Score: {0:0.1f}%".format(classifier.score(X_train, y_train)*100))
-print("Accuracy: {0:0.1f}%".format(accuracy_score(y_test,y_pred)*100))
+train_score, validation_score = classifier.score(X_train, y_train), accuracy_score(y_test,y_pred)
+print("Score: %.2f%%" % (train_score*100))
+print("Accuracy: %.2f%%" % (validation_score*100))
+print("Total accuracy: %.2f%%" % (((train_score*n_img*(1-test_size)+validation_score*n_img*test_size)/n_img)*100))
 print_cm(confusion_matrix(y_test, y_pred), labels=categories)
 
 joblib.dump((X, y), 'features.pkl')
